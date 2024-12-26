@@ -1,1 +1,1 @@
-# A Crypto OHLC Provider for openbb
+# Coingecko OpenBB Provider Extension

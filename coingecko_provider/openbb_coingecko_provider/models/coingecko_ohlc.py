@@ -2,10 +2,7 @@
 import httpx
 import pandas as pd
 from dateutil import parser
-from datetime import (
-    date as dateType,
-    datetime
-)
+from datetime import date as dateType, datetime
 from typing import Any, Dict, List, Optional, Union
 
 from openbb_core.provider.utils.descriptions import (
@@ -23,8 +20,16 @@ class CoingeckoHistoricalQueryParams(QueryParams):
         description=QUERY_DESCRIPTIONS.get("symbol", "")
         + " Can use coin id format."
     )
-    vs_currency: str = Field()
-    days: PositiveInt = Field()
+    vs_currency: str = Field(
+        default="usd",
+        description="target currency of price data*refers to https://docs.coingecko.com/v3.0.1/reference/simple-supported-currencies.",
+    )
+    days: PositiveInt = Field(
+        default=1, description="data up to number of days ago "
+    )
+    precision: PositiveInt = Field(
+        description="decimal place for currency price value"
+    )
 
 
 class CoingeckoHistoricalData(Data):
@@ -36,7 +41,9 @@ class CoingeckoHistoricalData(Data):
     open: PositiveFloat = Field(description=DATA_DESCRIPTIONS.get("open", ""))
     high: PositiveFloat = Field(description=DATA_DESCRIPTIONS.get("high", ""))
     low: PositiveFloat = Field(description=DATA_DESCRIPTIONS.get("low", ""))
-    close: PositiveFloat = Field(description=DATA_DESCRIPTIONS.get("close", ""))
+    close: PositiveFloat = Field(
+        description=DATA_DESCRIPTIONS.get("close", "")
+    )
 
     @field_validator("date", mode="before", check_fields=False)
     @classmethod
@@ -54,31 +61,43 @@ class CoingeckoOHLCFetcher(
     ]
 ):
     @staticmethod
-    def transform_query(params: Dict[str, Any]) -> CoingeckoHistoricalQueryParams:
+    def transform_query(
+        params: Dict[str, Any]
+    ) -> CoingeckoHistoricalQueryParams:
         """Transform query params."""
-        return CoingeckoHistoricalQueryParams(**params)
+        transformed_params = params
+        if params.get("vs_currency") is None:
+            transformed_params["vs_currency"] = "usd"
+        if params.get("precision") is None:
+            transformed_params["precision"] = 4
+        return CoingeckoHistoricalQueryParams(**transformed_params)
 
     @staticmethod
-    async def aextract_data( # The function does not have to be asynchronous. If not, remove the leading 'a', 'extract_data'.
+    async def aextract_data(  # The function does not have to be asynchronous. If not, remove the leading 'a', 'extract_data'.
         query: CoingeckoHistoricalQueryParams,
         credentials: Optional[Dict[str, str]],
         **kwargs: Any,
     ) -> List[Dict]:
-        """Extract data. Put HTTP Requests here. This should return the closest form of raw data possible."""
-        print(query)
-        url = f"https://api.coingecko.com/api/v3/coins/{query.symbol}/ohlc?vs_currency={query.vs_currency}&days={query.days}"
+        # url = f"https://api.coingecko.com/api/v3/coins/{query.symbol}/ohlc?vs_currency={query.vs_currency}&days={query.days}"
+        url = f"https://api.coingecko.com/api/v3/coins/{query.symbol}/ohlc"
         client = httpx.AsyncClient()
-        res = await client.get(url)
-        # data = response.json()
-        df = pd.DataFrame(res.json(), columns=["date", "open", "high", "low", "close"])
-        df.date = df.date.apply(lambda x : datetime.fromtimestamp(x / 1000))
-
-        return df.to_dict(orient="records")
+        res = await client.get(
+            url,
+            params={
+                "vs_currency": query.vs_currency,
+                "days": query.days,
+                "precision": query.precision,
+            },
+        )
+        df = pd.DataFrame(
+            res.json(), columns=["date", "open", "high", "low", "close"]
+        )
+        df.date = pd.to_datetime(df.date, unit="ms")
+        df.index = df.date
+        return df.sort_index(ascending=False).to_dict(orient="records")
 
     @staticmethod
     def transform_data(
-        query: CoingeckoHistoricalQueryParams,
-        data: List[Dict],
-        **kwargs: Any
+        query: CoingeckoHistoricalQueryParams, data: List[Dict], **kwargs: Any
     ) -> List[CoingeckoHistoricalData]:
         return [CoingeckoHistoricalData.model_validate(d) for d in data]
