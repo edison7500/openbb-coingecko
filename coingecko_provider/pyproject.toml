@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "openbb-coingecko-provider"
+version = "0.0.1"
+description = "Coingecko provider extension for OpenBB"
+authors = ["Errrr Team <hello@openbb.co>"]
+readme = "README.md"
+packages = [{ include = "openbb_coingecko_provider" }]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+openbb = "^4.1.7"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."openbb_provider_extension"]
+coingecko = "openbb_coingecko_provider:coingecko_provider"

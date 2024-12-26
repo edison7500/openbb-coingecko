@@ -1,0 +1,1 @@
+"""Coingecko Router Module."""

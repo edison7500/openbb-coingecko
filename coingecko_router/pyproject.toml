@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "openbb-coingecko-router"
+version = "0.0.1"
+description = "Coingecko OpenBB Router extension"
+authors = ["OpenBB Team <hello@openbb.co>"]
+readme = "README.md"
+packages = [{ include = "openbb_coingecko_router" }]
+
+[tool.poetry.dependencies]
+python = "^3.8,<3.12"
+openbb = "^4.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."openbb_core_extension"]
+coingecko = "openbb_coingecko_router.coingecko_router:router"
